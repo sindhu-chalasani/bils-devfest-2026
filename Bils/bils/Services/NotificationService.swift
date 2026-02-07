@@ -4,10 +4,12 @@ import UIKit
 // MARK: - Notification action/category identifiers
 
 enum NotificationAction {
-    static let splitEvenly = "SPLIT_EVENLY_ACTION"
+    static let dontSplit = "DONT_SPLIT_ACTION"
     static let customSplit = "CUSTOM_SPLIT_ACTION"
-    static let ignore = "IGNORE_ACTION"
     static let category = "PAYMENT_SPLIT_CATEGORY"
+
+    /// Prefix for preset actions — full identifier is "PRESET_0", "PRESET_1", etc.
+    static let presetPrefix = "PRESET_"
 }
 
 class NotificationService: NSObject, ObservableObject {
@@ -15,7 +17,7 @@ class NotificationService: NSObject, ObservableObject {
     @Published var isAuthorized = false
 
     // Posted when user taps a notification action
-    // userInfo: ["paymentID": UUID, "action": String]
+    // userInfo keys: "paymentID" (UUID), "action" (String), "presetIndex" (Int, optional)
     static let actionNotification = Notification.Name("NotificationService.action")
 
     override init() {
@@ -23,7 +25,7 @@ class NotificationService: NSObject, ObservableObject {
         registerCategories()
     }
 
-    // MARK: - Phase 1: Request permission
+    // MARK: - Request permission
 
     func requestPermission() {
         UNUserNotificationCenter.current().requestAuthorization(
@@ -38,28 +40,41 @@ class NotificationService: NSObject, ObservableObject {
         }
     }
 
-    // MARK: - Phase 2: Register interactive category
+    // MARK: - Register interactive category with preset contacts
 
-    private func registerCategories() {
-        let splitEvenly = UNNotificationAction(
-            identifier: NotificationAction.splitEvenly,
-            title: "Split Evenly",
-            options: [.foreground]
-        )
-        let customSplit = UNNotificationAction(
+    func registerCategories() {
+        let presets = PresetStore.shared.presets
+
+        // Build actions: preset contacts first, then Custom, then Don't Split
+        // iOS allows max 4 actions in the long-press menu
+        var actions: [UNNotificationAction] = []
+
+        for (index, preset) in presets.prefix(2).enumerated() {
+            let action = UNNotificationAction(
+                identifier: "\(NotificationAction.presetPrefix)\(index)",
+                title: "Split w/ \(preset.name)",
+                options: []  // stays in background — "auto-sends"
+            )
+            actions.append(action)
+        }
+
+        let custom = UNNotificationAction(
             identifier: NotificationAction.customSplit,
-            title: "Custom Split",
-            options: [.foreground]
+            title: "Custom...",
+            options: [.foreground]  // opens the app
         )
-        let ignore = UNNotificationAction(
-            identifier: NotificationAction.ignore,
-            title: "Ignore",
+        actions.append(custom)
+
+        let dontSplit = UNNotificationAction(
+            identifier: NotificationAction.dontSplit,
+            title: "Don't Split",
             options: [.destructive]
         )
+        actions.append(dontSplit)
 
         let paymentCategory = UNNotificationCategory(
             identifier: NotificationAction.category,
-            actions: [splitEvenly, customSplit, ignore],
+            actions: actions,
             intentIdentifiers: [],
             options: []
         )
@@ -67,11 +82,12 @@ class NotificationService: NSObject, ObservableObject {
         UNUserNotificationCenter.current().setNotificationCategories([paymentCategory])
     }
 
-    // MARK: - Phase 4: Schedule a payment notification
+    // MARK: - Schedule a payment notification
 
-    /// Schedules a local notification after a delay, simulating the
-    /// "you just paid, want to split?" flow.
     func schedulePaymentNotification(payment: Payment, delay: TimeInterval = 8) {
+        // Re-register so presets are up to date
+        registerCategories()
+
         let content = UNMutableNotificationContent()
         content.title = "Split this bill?"
         content.body = String(
@@ -101,9 +117,11 @@ class NotificationService: NSObject, ObservableObject {
         }
     }
 
-    // MARK: - Phase 1: Simple test notification
+    // MARK: - Test notification
 
     func sendTestNotification() {
+        registerCategories()
+
         let content = UNMutableNotificationContent()
         content.title = "Bils is working!"
         content.body = "Notifications are set up correctly."
@@ -121,10 +139,9 @@ class NotificationService: NSObject, ObservableObject {
     }
 }
 
-// MARK: - Phase 3: Handle notification actions
+// MARK: - Handle notification actions
 
 extension NotificationService: UNUserNotificationCenterDelegate {
-    /// Called when user taps on notification or an action button
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
@@ -133,18 +150,29 @@ extension NotificationService: UNUserNotificationCenterDelegate {
         let userInfo = response.notification.request.content.userInfo
         let paymentIDString = userInfo["paymentID"] as? String
         let paymentID = paymentIDString.flatMap { UUID(uuidString: $0) }
+        let actionID = response.actionIdentifier
 
-        switch response.actionIdentifier {
-        case NotificationAction.splitEvenly:
+        // Preset action — e.g. "PRESET_0", "PRESET_1"
+        if actionID.hasPrefix(NotificationAction.presetPrefix),
+           let indexString = actionID.split(separator: "_").last,
+           let index = Int(indexString) {
             if let id = paymentID {
                 PaymentStore.shared.updateStatus(id: id, status: .splitEvenly)
             }
             NotificationCenter.default.post(
                 name: NotificationService.actionNotification,
                 object: nil,
-                userInfo: ["paymentID": paymentID as Any, "action": "splitEvenly"]
+                userInfo: [
+                    "paymentID": paymentID as Any,
+                    "action": "preset",
+                    "presetIndex": index
+                ]
             )
+            completionHandler()
+            return
+        }
 
+        switch actionID {
         case NotificationAction.customSplit:
             NotificationCenter.default.post(
                 name: NotificationService.actionNotification,
@@ -152,17 +180,17 @@ extension NotificationService: UNUserNotificationCenterDelegate {
                 userInfo: ["paymentID": paymentID as Any, "action": "customSplit"]
             )
 
-        case NotificationAction.ignore:
+        case NotificationAction.dontSplit:
             if let id = paymentID {
                 PaymentStore.shared.updateStatus(id: id, status: .ignored)
             }
 
         case UNNotificationDefaultActionIdentifier:
-            // User tapped the notification body (not an action button)
+            // Tapped notification body → open app to custom split
             NotificationCenter.default.post(
                 name: NotificationService.actionNotification,
                 object: nil,
-                userInfo: ["paymentID": paymentID as Any, "action": "splitEvenly"]
+                userInfo: ["paymentID": paymentID as Any, "action": "customSplit"]
             )
 
         default:
@@ -172,7 +200,6 @@ extension NotificationService: UNUserNotificationCenterDelegate {
         completionHandler()
     }
 
-    /// Show notifications even when app is in foreground (useful for demo)
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,

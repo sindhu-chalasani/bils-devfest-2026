@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		364AAC1F2F37D33900AABD55 /* Payment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 364AAC122F37D33900AABD55 /* Payment.swift */; };
-		364AAC202F37D33900AABD55 /* CustomSplitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 364AAC192F37D33900AABD55 /* CustomSplitView.swift */; };
 		364AAC212F37D33900AABD55 /* Router.swift in Sources */ = {isa = PBXBuildFile; fileRef = 364AAC142F37D33900AABD55 /* Router.swift */; };
 		364AAC222F37D33900AABD55 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 364AAC1B2F37D33900AABD55 /* HomeView.swift */; };
 		364AAC232F37D33900AABD55 /* BilsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 364AAC112F37D33900AABD55 /* BilsApp.swift */; };
@@ -16,9 +15,10 @@
 		364AAC252F37D33900AABD55 /* PaymentStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 364AAC132F37D33900AABD55 /* PaymentStore.swift */; };
 		364AAC262F37D33900AABD55 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 364AAC1A2F37D33900AABD55 /* HistoryView.swift */; };
 		364AAC272F37D33900AABD55 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 364AAC182F37D33900AABD55 /* ContentView.swift */; };
-		364AAC282F37D33900AABD55 /* SplitEvenlyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 364AAC1D2F37D33900AABD55 /* SplitEvenlyView.swift */; };
 		364AAC292F37D33900AABD55 /* PaymentRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 364AAC1C2F37D33900AABD55 /* PaymentRow.swift */; };
 		364AAC2A2F37D33900AABD55 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 364AAC102F37D33900AABD55 /* AppDelegate.swift */; };
+		364AAC3C2F37F4B500AABD55 /* Preset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 364AAC3B2F37F4B500AABD55 /* Preset.swift */; };
+		364AAC402F37F70B00AABD55 /* SplitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 364AAC3F2F37F70B00AABD55 /* SplitView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -49,11 +49,11 @@
 		364AAC142F37D33900AABD55 /* Router.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Router.swift; sourceTree = "<group>"; };
 		364AAC162F37D33900AABD55 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		364AAC182F37D33900AABD55 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		364AAC192F37D33900AABD55 /* CustomSplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomSplitView.swift; sourceTree = "<group>"; };
 		364AAC1A2F37D33900AABD55 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		364AAC1B2F37D33900AABD55 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		364AAC1C2F37D33900AABD55 /* PaymentRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentRow.swift; sourceTree = "<group>"; };
-		364AAC1D2F37D33900AABD55 /* SplitEvenlyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitEvenlyView.swift; sourceTree = "<group>"; };
+		364AAC3B2F37F4B500AABD55 /* Preset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Preset.swift; sourceTree = "<group>"; };
+		364AAC3F2F37F70B00AABD55 /* SplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -127,6 +127,7 @@
 		364AAC152F37D33900AABD55 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				364AAC3B2F37F4B500AABD55 /* Preset.swift */,
 				364AAC122F37D33900AABD55 /* Payment.swift */,
 				364AAC132F37D33900AABD55 /* PaymentStore.swift */,
 				364AAC142F37D33900AABD55 /* Router.swift */,
@@ -145,12 +146,11 @@
 		364AAC1E2F37D33900AABD55 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				364AAC3F2F37F70B00AABD55 /* SplitView.swift */,
 				364AAC182F37D33900AABD55 /* ContentView.swift */,
-				364AAC192F37D33900AABD55 /* CustomSplitView.swift */,
 				364AAC1A2F37D33900AABD55 /* HistoryView.swift */,
 				364AAC1B2F37D33900AABD55 /* HomeView.swift */,
 				364AAC1C2F37D33900AABD55 /* PaymentRow.swift */,
-				364AAC1D2F37D33900AABD55 /* SplitEvenlyView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -300,15 +300,15 @@
 			buildActionMask = 2147483647;
 			files = (
 				364AAC1F2F37D33900AABD55 /* Payment.swift in Sources */,
-				364AAC202F37D33900AABD55 /* CustomSplitView.swift in Sources */,
 				364AAC212F37D33900AABD55 /* Router.swift in Sources */,
 				364AAC222F37D33900AABD55 /* HomeView.swift in Sources */,
 				364AAC232F37D33900AABD55 /* BilsApp.swift in Sources */,
 				364AAC242F37D33900AABD55 /* NotificationService.swift in Sources */,
+				364AAC402F37F70B00AABD55 /* SplitView.swift in Sources */,
 				364AAC252F37D33900AABD55 /* PaymentStore.swift in Sources */,
 				364AAC262F37D33900AABD55 /* HistoryView.swift in Sources */,
 				364AAC272F37D33900AABD55 /* ContentView.swift in Sources */,
-				364AAC282F37D33900AABD55 /* SplitEvenlyView.swift in Sources */,
+				364AAC3C2F37F4B500AABD55 /* Preset.swift in Sources */,
 				364AAC292F37D33900AABD55 /* PaymentRow.swift in Sources */,
 				364AAC2A2F37D33900AABD55 /* AppDelegate.swift in Sources */,
 			);
