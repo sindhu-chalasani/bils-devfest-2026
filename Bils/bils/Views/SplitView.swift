@@ -8,6 +8,7 @@ enum SplitMode: String, CaseIterable {
 struct SplitView: View {
     let paymentID: UUID
     @EnvironmentObject var store: PaymentStore
+    @EnvironmentObject var splitStore: SplitRequestStore
     @Environment(\.dismiss) var dismiss
 
     @StateObject private var presetStore = PresetStore.shared
@@ -15,6 +16,7 @@ struct SplitView: View {
     @State private var splitMode: SplitMode = .even
     @State private var customAmounts: [UUID: String] = [:]
     @State private var showSentConfirmation = false
+    @State private var note = ""
 
     private var payment: Payment? {
         store.payment(for: paymentID)
@@ -98,6 +100,13 @@ struct SplitView: View {
                                     evenSplitSection
                                 } else {
                                     customSplitSection
+                                }
+
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Note")
+                                        .font(.subheadline.weight(.medium))
+                                    TextField("Add note", text: $note)
+                                        .textFieldStyle(.roundedBorder)
                                 }
                             }
                             .padding()
@@ -272,8 +281,38 @@ struct SplitView: View {
     // MARK: - Send
 
     private func sendSplit() {
+        guard let payment = payment else { return }
+
         let status: SplitStatus = splitMode == .even ? .splitEvenly : .customSplit
         store.updateStatus(id: paymentID, status: status)
+
+        let participants: [SplitParticipant] = selectedPresets.compactMap { person in
+            let amount: Double
+            if splitMode == .even {
+                amount = othersShare
+            } else {
+                amount = Double(customAmounts[person.id] ?? "") ?? 0
+            }
+
+            guard amount > 0 else { return nil }
+            return SplitParticipant(
+                presetID: person.id,
+                nameSnapshot: person.name,
+                amountOwed: amount
+            )
+        }
+
+        if !participants.isEmpty {
+            let request = SplitRequest(
+                paymentID: payment.id,
+                merchant: payment.merchant,
+                totalAmount: payment.amount,
+                direction: .outgoing,
+                note: note,
+                participants: participants
+            )
+            splitStore.add(request)
+        }
 
         withAnimation { showSentConfirmation = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {

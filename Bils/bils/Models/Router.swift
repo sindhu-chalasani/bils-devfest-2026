@@ -4,6 +4,7 @@ enum AppDestination: Hashable {
     case home
     case split(paymentID: UUID)
     case history
+    case splitRequestDetail(id: UUID)
 }
 
 class Router: ObservableObject {

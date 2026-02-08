@@ -2,171 +2,216 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject var store: PaymentStore
-    @EnvironmentObject var notificationService: NotificationService
-
-    @State private var merchant = ""
-    @State private var amount = ""
-    @State private var selectedCategory: PaymentCategory = .restaurant
-    @State private var showConfirmation = false
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
-                // Header
-                VStack(spacing: 4) {
-                    Text("bils")
-                        .font(.system(size: 40, weight: .bold, design: .rounded))
-                    Text("Split payments, not friendships")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.top, 20)
+            VStack(alignment: .leading, spacing: 18) {
+                header
 
-                // "I just paid" card
-                VStack(spacing: 16) {
-                    Text("I just paid...")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                Text("Latest transactions")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(.primary)
 
-                    TextField("Where? (e.g. Chipotle)", text: $merchant)
-                        .textFieldStyle(.roundedBorder)
-
-                    TextField("How much?", text: $amount)
-                        .textFieldStyle(.roundedBorder)
-                        .keyboardType(.decimalPad)
-
-                    // Category picker
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 10) {
-                            ForEach(PaymentCategory.allCases, id: \.self) { category in
-                                Button {
-                                    selectedCategory = category
-                                } label: {
-                                    Label(category.rawValue, systemImage: category.icon)
-                                        .font(.caption)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 8)
-                                        .background(
-                                            selectedCategory == category
-                                                ? Color.blue
-                                                : Color(.systemGray5)
-                                        )
-                                        .foregroundStyle(
-                                            selectedCategory == category ? .white : .primary
-                                        )
-                                        .clipShape(Capsule())
-                                }
-                            }
-                        }
-                    }
-
-                    Button {
-                        submitPayment()
-                    } label: {
-                        Text("I Paid")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(canSubmit ? Color.blue : Color.gray)
-                            .foregroundStyle(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 14))
-                    }
-                    .disabled(!canSubmit)
-                }
-                .padding()
-                .background(Color(.systemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
-
-                // Recent payments
-                if !store.payments.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Text("Recent")
-                                .font(.headline)
-                            Spacer()
-                            NavigationLink(value: AppDestination.history) {
-                                Text("See all")
-                                    .font(.subheadline)
-                            }
-                        }
-
-                        ForEach(store.payments.prefix(3)) { payment in
-                            PaymentRow(payment: payment)
-                        }
-                    }
-                    .padding()
-                    .background(Color(.systemBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                    .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
-                }
-
-                // Test notification button (for development)
-                Button {
-                    notificationService.sendTestNotification()
-                } label: {
-                    Label("Send Test Notification", systemImage: "bell.badge")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.top, 8)
+                transactionsCard
             }
-            .padding()
+            .padding(.horizontal, 20)
+            .padding(.top, 24)
+            .padding(.bottom, 18)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color(red: 0.96, green: 0.96, blue: 0.98))
         .onAppear {
-            notificationService.requestPermission()
+            seedPaymentsIfNeeded()
         }
-        .overlay {
-            if showConfirmation {
-                confirmationOverlay
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("bils")
+                    .font(.system(size: 44, weight: .bold))
+                    .foregroundStyle(.black)
+
+                WaveUnderline()
+                    .stroke(Color(red: 0.98, green: 0.29, blue: 0.21), lineWidth: 4)
+                    .frame(width: 110, height: 10)
+                    .padding(.leading, 2)
             }
         }
     }
 
-    private var canSubmit: Bool {
-        !merchant.trimmingCharacters(in: .whitespaces).isEmpty
-            && (Double(amount) ?? 0) > 0
-    }
+    private var transactionsCard: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(transactions.enumerated()), id: \.element.id) { index, item in
+                NavigationLink(value: AppDestination.split(paymentID: item.id)) {
+                    TransactionRow(item: item)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                }
+                .buttonStyle(.plain)
 
-    private func submitPayment() {
-        guard let parsedAmount = Double(amount) else { return }
-
-        let payment = Payment(
-            merchant: merchant.trimmingCharacters(in: .whitespaces),
-            amount: parsedAmount,
-            category: selectedCategory
+                if index < transactions.count - 1 {
+                    Divider()
+                        .padding(.leading, 72)
+                }
+            }
+        }
+        .background(.white)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.black.opacity(0.06), lineWidth: 1)
         )
+    }
 
-        store.add(payment)
-        notificationService.schedulePaymentNotification(payment: payment)
-
-        // Reset form
-        merchant = ""
-        amount = ""
-        selectedCategory = .restaurant
-
-        // Brief confirmation
-        withAnimation { showConfirmation = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation { showConfirmation = false }
+    private var transactions: [MockTransaction] {
+        store.payments.map { payment in
+            MockTransaction(
+                id: payment.id,
+                merchant: payment.merchant,
+                location: "New York, NY",
+                time: timeString(for: payment.date),
+                amount: String(format: "$%.2f", payment.amount),
+                icon: iconName(for: payment.category),
+                iconBackground: iconBackground(for: payment.category),
+                iconForeground: .white
+            )
         }
     }
 
-    private var confirmationOverlay: some View {
-        VStack {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.green)
-            Text("Payment logged!")
-                .font(.headline)
-            Text("You'll get a notification shortly")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+    private func seedPaymentsIfNeeded() {
+        guard store.payments.isEmpty else { return }
+
+        let calendar = Calendar.current
+        let now = Date()
+        let seeds: [(String, Double, PaymentCategory, Date)] = [
+            ("Raising Cane's Chicken Fingers", 21.76, .restaurant, calendar.date(byAdding: .hour, value: -14, to: now) ?? now),
+            ("Blue Bottle Coffee", 8.44, .restaurant, calendar.date(byAdding: .day, value: -1, to: now) ?? now),
+            ("Metropolitan Transportation", 3.00, .utilities, calendar.date(byAdding: .day, value: -2, to: now) ?? now),
+            ("Mojo East", 61.70, .restaurant, calendar.date(byAdding: .day, value: -3, to: now) ?? now),
+            ("Metropolitan Transportation", 3.00, .utilities, calendar.date(byAdding: .day, value: -4, to: now) ?? now),
+            ("CVS Pharmacy", 19.04, .other, calendar.date(byAdding: .day, value: -7, to: now) ?? now),
+            ("Metropolitan Transportation", 3.00, .utilities, calendar.date(byAdding: .day, value: -7, to: now) ?? now),
+            ("Blue Bottle Coffee", 8.44, .restaurant, calendar.date(byAdding: .day, value: -9, to: now) ?? now)
+        ]
+
+        for seed in seeds.reversed() {
+            store.add(
+                Payment(
+                    merchant: seed.0,
+                    amount: seed.1,
+                    date: seed.3,
+                    category: seed.2
+                )
+            )
         }
-        .padding(32)
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .transition(.scale.combined(with: .opacity))
+    }
+
+    private func timeString(for date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+
+    private func iconName(for category: PaymentCategory) -> String {
+        switch category {
+        case .restaurant:
+            return "fork.knife"
+        case .groceries:
+            return "cart.fill"
+        case .utilities:
+            return "bus.fill"
+        case .entertainment:
+            return "film.fill"
+        case .other:
+            return "heart.fill"
+        }
+    }
+
+    private func iconBackground(for category: PaymentCategory) -> Color {
+        switch category {
+        case .restaurant:
+            return Color(red: 0.91, green: 0.12, blue: 0.16)
+        case .groceries:
+            return Color(red: 0.22, green: 0.54, blue: 0.84)
+        case .utilities:
+            return Color(red: 0.31, green: 0.55, blue: 0.97)
+        case .entertainment:
+            return Color(red: 0.91, green: 0.60, blue: 0.36)
+        case .other:
+            return Color(red: 0.76, green: 0.16, blue: 0.14)
+        }
+    }
+}
+struct MockTransaction: Identifiable {
+    let id: UUID
+    let merchant: String
+    let location: String
+    let time: String
+    let amount: String
+    let icon: String
+    let iconBackground: Color
+    let iconForeground: Color
+}
+
+struct TransactionRow: View {
+    let item: MockTransaction
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(item.iconBackground)
+                    .frame(width: 44, height: 44)
+
+                Image(systemName: item.icon)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(item.iconForeground)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(item.merchant)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.black)
+                        .lineLimit(1)
+
+                    Spacer(minLength: 4)
+
+                    Text(item.amount)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.black)
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.gray)
+                }
+
+                Text(item.location)
+                    .font(.caption)
+                    .foregroundStyle(.gray)
+
+                Text(item.time)
+                    .font(.caption)
+                    .foregroundStyle(.gray)
+            }
+        }
+    }
+}
+
+struct WaveUnderline: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let amplitude: CGFloat = rect.height / 3
+        let midY = rect.midY
+        let width = rect.width
+        let step = width / 6
+
+        path.move(to: CGPoint(x: 0, y: midY))
+        for i in 0...6 {
+            let x = CGFloat(i) * step
+            let y = i.isMultiple(of: 2) ? midY - amplitude : midY + amplitude
+            path.addLine(to: CGPoint(x: x, y: y))
+        }
+        return path
     }
 }
