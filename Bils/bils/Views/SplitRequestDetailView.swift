@@ -15,15 +15,30 @@ struct SplitRequestDetailView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         VStack(alignment: .leading, spacing: 6) {
+                            Text(primaryName(for: request))
+                                .font(.title3.weight(.bold))
+
+                            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                Text(amountText(for: request))
+                                    .font(.system(size: 34, weight: .bold))
+
+                                Text("/ \(String(format: "$%.2f", request.totalAmount)) owed")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            WavyUnderline()
+                                .stroke(Color(red: 0.96, green: 0.25, blue: 0.23), lineWidth: 3)
+                                .frame(width: 90, height: 8)
+
                             Text(request.merchant)
-                                .font(.title2.weight(.bold))
-                            Text(request.direction == .incoming ? "You owe" : "They owe")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
-                        }
 
-                        Text(amountText(for: request))
-                            .font(.system(size: 36, weight: .bold))
+                            Text(request.createdAt.formatted(date: .abbreviated, time: .shortened))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
 
                         if !request.note.isEmpty {
                             Text("Note: \(request.note)")
@@ -31,25 +46,31 @@ struct SplitRequestDetailView: View {
                                 .foregroundStyle(.secondary)
                         }
 
-                        Divider()
-
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("Participants")
+                            Text("Unresolved payments")
                                 .font(.headline)
 
-                            ForEach(request.participants) { participant in
-                                HStack {
-                                    Text(participant.nameSnapshot)
-                                        .font(.subheadline.weight(.medium))
-                                    Spacer()
-                                    Text(String(format: "$%.2f", participant.amountOwed))
-                                        .font(.subheadline)
+                            HStack {
+                                Circle()
+                                    .fill(Color(.systemGray5))
+                                    .frame(width: 40, height: 40)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(request.merchant)
+                                        .font(.subheadline.weight(.semibold))
+                                    Text(request.createdAt, style: .date)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
                                 }
-                                .padding(.vertical, 4)
+                                Spacer()
+                                Text(amountText(for: request))
+                                    .font(.subheadline.weight(.semibold))
                             }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(Color(.systemBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                            .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
                         }
-
-                        Divider()
 
                         HStack(spacing: 12) {
                             Button {
@@ -67,16 +88,20 @@ struct SplitRequestDetailView: View {
                                     .frame(maxWidth: .infinity)
                             }
                             .buttonStyle(.borderedProminent)
+                            .tint(Color(red: 0.96, green: 0.25, blue: 0.23))
                         }
                     }
-                    .padding()
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+                    .padding(.bottom, 24)
                 }
             } else {
                 Text("Request not found")
                     .foregroundStyle(.secondary)
             }
         }
-        .navigationTitle("Split Request")
+        .background(Color(red: 0.98, green: 0.98, blue: 1.0))
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -89,5 +114,27 @@ struct SplitRequestDetailView: View {
     private func amountText(for request: SplitRequest) -> String {
         let amount = request.participants.map { $0.amountOwed }.reduce(0, +)
         return String(format: "$%.2f", amount)
+    }
+
+    private func primaryName(for request: SplitRequest) -> String {
+        request.participants.first?.nameSnapshot ?? "Split"
+    }
+}
+
+struct WavyUnderline: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let amplitude: CGFloat = rect.height / 2.5
+        let midY = rect.midY
+        let width = rect.width
+        let step = width / 6
+
+        path.move(to: CGPoint(x: 0, y: midY))
+        for i in 0...6 {
+            let x = CGFloat(i) * step
+            let y = i.isMultiple(of: 2) ? midY - amplitude : midY + amplitude
+            path.addLine(to: CGPoint(x: x, y: y))
+        }
+        return path
     }
 }

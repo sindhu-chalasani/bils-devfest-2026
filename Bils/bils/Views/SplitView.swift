@@ -17,6 +17,8 @@ struct SplitView: View {
     @State private var customAmounts: [UUID: String] = [:]
     @State private var showSentConfirmation = false
     @State private var note = ""
+    @State private var searchText = ""
+    @State private var didSplitEven = false
 
     private var payment: Payment? {
         store.payment(for: paymentID)
@@ -55,87 +57,47 @@ struct SplitView: View {
         VStack(spacing: 0) {
             if let payment = payment {
                 ScrollView {
-                    VStack(spacing: 24) {
-                        // Payment header
-                        VStack(spacing: 4) {
-                            Text(payment.merchant)
-                                .font(.title2.weight(.bold))
-                            Text(String(format: "$%.2f", payment.amount))
-                                .font(.system(size: 36, weight: .bold, design: .rounded))
-                                .foregroundStyle(.blue)
-                        }
-                        .padding(.top, 12)
+                    VStack(spacing: 18) {
+                        header(payment)
 
-                        // People picker
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Split with")
-                                .font(.headline)
+                        searchBar
 
+                        addFriendRow
+
+                        topPeopleHeader
+
+                        VStack(spacing: 0) {
                             if presetStore.presets.isEmpty {
                                 Text("No contacts yet. Add people in Settings.")
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.vertical, 8)
                             } else {
-                                ForEach(presetStore.presets) { person in
+                                ForEach(filteredPresets) { person in
                                     personRow(person)
-                                }
-                            }
-                        }
-                        .padding()
-                        .background(Color(.systemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                        .shadow(color: .black.opacity(0.06), radius: 6, y: 3)
+                                        .padding(.vertical, 8)
 
-                        // Split mode picker
-                        if !selectedPeople.isEmpty {
-                            VStack(spacing: 16) {
-                                Picker("Split Mode", selection: $splitMode) {
-                                    ForEach(SplitMode.allCases, id: \.self) { mode in
-                                        Text(mode.rawValue).tag(mode)
+                                    if person.id != filteredPresets.last?.id {
+                                        Divider()
+                                            .padding(.leading, 64)
                                     }
                                 }
-                                .pickerStyle(.segmented)
-
-                                if splitMode == .even {
-                                    evenSplitSection
-                                } else {
-                                    customSplitSection
-                                }
-
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("Note")
-                                        .font(.subheadline.weight(.medium))
-                                    TextField("Add note", text: $note)
-                                        .textFieldStyle(.roundedBorder)
-                                }
                             }
-                            .padding()
-                            .background(Color(.systemBackground))
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
-                            .shadow(color: .black.opacity(0.06), radius: 6, y: 3)
                         }
-                    }
-                    .padding()
-                }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color(.systemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .shadow(color: .black.opacity(0.04), radius: 6, y: 3)
 
-                // Send button pinned to bottom
-                if !selectedPeople.isEmpty {
-                    Button {
-                        sendSplit()
-                    } label: {
-                        HStack {
-                            Image(systemName: "paperplane.fill")
-                            Text("Send Notification")
+                        if !selectedPeople.isEmpty {
+                            amountSection(payment)
                         }
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
-                    .padding(.horizontal)
-                    .padding(.bottom, 8)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+                    .padding(.bottom, 24)
                 }
             } else {
                 Spacer()
@@ -144,8 +106,8 @@ struct SplitView: View {
                 Spacer()
             }
         }
-        .background(Color(.systemGroupedBackground))
-        .navigationTitle("Split Bill")
+        .background(Color(red: 0.98, green: 0.98, blue: 1.0))
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .overlay {
             if showSentConfirmation {
@@ -170,18 +132,18 @@ struct SplitView: View {
             }
         } label: {
             HStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(isSelected ? Color.blue : Color(.systemGray4))
-                        .frame(width: 40, height: 40)
-                    Text(String(person.name.prefix(1)).uppercased())
-                        .font(.headline)
-                        .foregroundStyle(isSelected ? .white : .secondary)
-                }
+                Circle()
+                    .fill(Color(.systemGray5))
+                    .frame(width: 44, height: 44)
+                    .overlay(
+                        Text(String(person.name.prefix(1)).uppercased())
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                    )
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(person.name)
-                        .font(.body.weight(.medium))
+                        .font(.body.weight(.semibold))
                         .foregroundStyle(.primary)
                     Text(person.phone)
                         .font(.caption)
@@ -190,47 +152,46 @@ struct SplitView: View {
 
                 Spacer()
 
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.title3)
-                    .foregroundStyle(isSelected ? .blue : Color(.systemGray3))
+                Circle()
+                    .stroke(isSelected ? Color(red: 0.96, green: 0.25, blue: 0.23) : Color(.systemGray4), lineWidth: 2)
+                    .frame(width: 22, height: 22)
+                    .overlay(
+                        Circle()
+                            .fill(isSelected ? Color(red: 0.96, green: 0.25, blue: 0.23) : .clear)
+                            .frame(width: 10, height: 10)
+                    )
             }
-            .padding(.vertical, 4)
         }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Even split breakdown
 
     private var evenSplitSection: some View {
-        VStack(spacing: 12) {
-            HStack {
-                Text("They each owe")
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Text(String(format: "$%.2f", othersShare))
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(.blue)
-            }
-
-            Divider()
-
-            VStack(spacing: 6) {
+        VStack(spacing: 10) {
+            ForEach(selectedPresets) { person in
                 HStack {
-                    Text("You")
-                        .font(.subheadline)
-                    Spacer()
-                    Text(String(format: "$%.2f", yourShare))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                ForEach(selectedPresets) { person in
-                    HStack {
+                    Circle()
+                        .fill(Color(.systemGray5))
+                        .frame(width: 36, height: 36)
+                        .overlay(
+                            Text(String(person.name.prefix(1)).uppercased())
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        )
+
+                    VStack(alignment: .leading, spacing: 2) {
                         Text(person.name)
-                            .font(.subheadline)
-                        Spacer()
-                        Text(String(format: "$%.2f", othersShare))
-                            .font(.subheadline)
+                            .font(.subheadline.weight(.semibold))
+                        Text("Split")
+                            .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+
+                    Spacer()
+
+                    Text(String(format: "$%.2f", didSplitEven ? othersShare : 0))
+                        .font(.subheadline.weight(.semibold))
                 }
             }
         }
@@ -239,34 +200,47 @@ struct SplitView: View {
     // MARK: - Custom amounts
 
     private var customSplitSection: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             ForEach(selectedPresets) { person in
                 HStack {
-                    Text(person.name)
-                        .font(.body.weight(.medium))
+                    Circle()
+                        .fill(Color(.systemGray5))
+                        .frame(width: 36, height: 36)
+                        .overlay(
+                            Text(String(person.name.prefix(1)).uppercased())
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        )
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(person.name)
+                            .font(.subheadline.weight(.semibold))
+                        Text("Custom")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
                     Spacer()
+
                     HStack(spacing: 4) {
                         Text("$")
                             .foregroundStyle(.secondary)
                         TextField("0.00", text: binding(for: person.id))
                             .keyboardType(.decimalPad)
-                            .frame(width: 70)
+                            .frame(width: 72)
                             .textFieldStyle(.roundedBorder)
                     }
                 }
             }
 
-            Divider()
-
             HStack {
-                Text("Remaining")
-                    .font(.subheadline)
+                Text("Left to pay")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 Spacer()
                 Text(String(format: "$%.2f", remaining))
-                    .font(.headline)
-                    .foregroundStyle(
-                        abs(remaining) < 0.01 ? .green : .orange
-                    )
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(abs(remaining) < 0.01 ? .green : .orange)
             }
         }
     }
@@ -335,5 +309,140 @@ struct SplitView: View {
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .transition(.scale.combined(with: .opacity))
+    }
+
+    private var searchBar: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField("Search friends", text: $searchText)
+                .textInputAutocapitalization(.never)
+                .disableAutocorrection(true)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color(.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.black.opacity(0.05), lineWidth: 1)
+        )
+    }
+
+    private var addFriendRow: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "plus.circle")
+                .font(.title3)
+                .foregroundStyle(.primary)
+            Text("Add a friend")
+                .font(.subheadline.weight(.semibold))
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color(.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.black.opacity(0.05), lineWidth: 1)
+        )
+    }
+
+    private var topPeopleHeader: some View {
+        HStack {
+            Text("Top people / groups")
+                .font(.subheadline.weight(.semibold))
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 4)
+    }
+
+    private func header(_ payment: Payment) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Split a transaction")
+                .font(.title3.weight(.bold))
+
+            HStack {
+                Text(payment.merchant)
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Text(timeString(for: payment.date))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func amountSection(_ payment: Payment) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(String(format: "$%.2f", payment.amount))
+                    .font(.system(size: 36, weight: .bold))
+                Text(splitMode == .custom ? "left to pay" : "total")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            if splitMode == .even {
+                evenSplitSection
+            } else {
+                customSplitSection
+            }
+
+            HStack {
+                Button {
+                    splitMode = .even
+                    didSplitEven = true
+                } label: {
+                    Text("Split even")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color(red: 0.96, green: 0.25, blue: 0.23))
+
+                Button {
+                    sendSplit()
+                } label: {
+                    Text("Send")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color(red: 0.96, green: 0.25, blue: 0.23))
+            }
+
+            Button {
+                splitMode = .custom
+                didSplitEven = false
+            } label: {
+                Text("Custom amounts")
+                    .font(.caption.weight(.semibold))
+            }
+            .buttonStyle(.plain)
+
+            TextField("Add note", text: $note)
+                .textFieldStyle(.roundedBorder)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 12)
+        .background(Color(.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.04), radius: 6, y: 3)
+    }
+
+    private var filteredPresets: [Preset] {
+        guard !searchText.isEmpty else { return presetStore.presets }
+        return presetStore.presets.filter {
+            $0.name.localizedCaseInsensitiveContains(searchText)
+                || $0.phone.localizedCaseInsensitiveContains(searchText)
+        }
+    }
+
+    private func timeString(for date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .short
+        return formatter.localizedString(for: date, relativeTo: Date())
     }
 }

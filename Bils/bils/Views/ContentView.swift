@@ -69,6 +69,7 @@ struct ContentView: View {
                     HistoryView()
                         .environmentObject(store)
                         .environmentObject(splitStore)
+                        .environmentObject(notificationService)
                 case .splitRequestDetail(let id):
                     SplitRequestDetailView(requestID: id)
                         .environmentObject(splitStore)
